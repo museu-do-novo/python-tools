@@ -17,8 +17,8 @@ if desktop_path:
     print(f"[i] Pasta será criada em: {pasta}")
     
     try:
-        os.makedirs(pasta, exist_ok=True)  # <<< COMENTEI POR SEGURANÇA
-        print(f"[+] Simulação de criação da pasta: {pasta}")
+        os.mkdir(pasta)
+        print(f"[+] criação da pasta: {pasta}")
     except Exception as e:
         print(f"[-] Erro ao criar a pasta: {e}")
 else:
