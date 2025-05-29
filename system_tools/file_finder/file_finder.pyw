@@ -35,6 +35,16 @@ class FileFinderApp:
         self.root = root
         self.bgcolor = gerar_cor_clara()  # Define uma cor de fundo aleatória
         self.setup_ui()  # Configura a interface do usuário
+        self.setup_icon()  # Configura o ícone da aplicação
+
+    def setup_icon(self):
+        """Configura o ícone da aplicação"""
+        try:
+            # Tenta carregar o ícone (ajuste o caminho se necessário)
+            self.root.iconbitmap('file_finder.ico')
+        except:
+            # Se não encontrar o ícone, continua sem ele
+            pass
 
     def setup_ui(self):
         """Configura todos os elementos da interface gráfica"""
@@ -55,6 +65,7 @@ class FileFinderApp:
         self.create_buttons()  # Botões de ação
         self.create_status_label()  # Label de status
         self.create_results_text()  # Área de resultados
+        self.create_theme_button()  # Botão para mudar o tema
 
         # Configuração de expansão dos componentes
         self.root.grid_rowconfigure(6, weight=1)  # Expande a linha do resultado
@@ -64,8 +75,9 @@ class FileFinderApp:
     def create_file_name_widgets(self):
         """Cria os widgets para entrada do nome do arquivo"""
         # Label explicativo
-        tk.Label(self.root, text="Nome (ou parte) do arquivo:", 
-                anchor='w', bg=self.bgcolor).grid(row=0, column=0, sticky='w', padx=5)
+        self.label_nome = tk.Label(self.root, text="Nome (ou parte) do arquivo:", 
+                                 anchor='w', bg=self.bgcolor)
+        self.label_nome.grid(row=0, column=0, sticky='w', padx=5)
         
         # Campo de entrada para o nome do arquivo
         self.entrada_nome = tk.Entry(self.root)
@@ -74,50 +86,76 @@ class FileFinderApp:
     def create_search_path_widgets(self):
         """Cria os widgets para seleção do caminho de busca"""
         # Label explicativo
-        tk.Label(self.root, text="Caminho inicial da busca:", 
-                anchor='w', bg=self.bgcolor).grid(row=2, column=0, sticky='w', padx=5)
+        self.label_caminho = tk.Label(self.root, text="Caminho inicial da busca:", 
+                                    anchor='w', bg=self.bgcolor)
+        self.label_caminho.grid(row=2, column=0, sticky='w', padx=5)
 
         # Frame para agrupar o campo de entrada e botão
-        frame_caminho = tk.Frame(self.root, bg=self.bgcolor)
-        frame_caminho.grid(row=3, column=0, columnspan=2, sticky='we', padx=5, pady=(0, 15))
-        frame_caminho.columnconfigure(0, weight=1)  # Expande a coluna do campo de entrada
+        self.frame_caminho = tk.Frame(self.root, bg=self.bgcolor)
+        self.frame_caminho.grid(row=3, column=0, columnspan=2, sticky='we', padx=5, pady=(0, 15))
+        self.frame_caminho.columnconfigure(0, weight=1)  # Expande a coluna do campo de entrada
 
         # Campo de entrada para o caminho
-        self.entrada_caminho = tk.Entry(frame_caminho)
+        self.entrada_caminho = tk.Entry(self.frame_caminho)
         self.entrada_caminho.grid(row=0, column=0, sticky='we')
 
         # Botão para abrir o diálogo de seleção de pasta
-        botao_escolher = tk.Button(frame_caminho, text="Selecionar pasta...", 
-                                 width=20, command=self.escolher_diretorio)
-        botao_escolher.grid(row=0, column=1, padx=(10, 0))
+        self.botao_escolher = tk.Button(self.frame_caminho, text="Selecionar pasta...", 
+                                      width=20, command=self.escolher_diretorio)
+        self.botao_escolher.grid(row=0, column=1, padx=(10, 0))
 
     def create_buttons(self):
         """Cria os botões de ação da aplicação"""
         # Frame para agrupar os botões
-        frame_botoes = tk.Frame(self.root, bg=self.bgcolor)
-        frame_botoes.grid(row=4, column=0, columnspan=2, pady=(5, 5))
+        self.frame_botoes = tk.Frame(self.root, bg=self.bgcolor)
+        self.frame_botoes.grid(row=4, column=0, columnspan=2, pady=(5, 5))
 
         # Botão para iniciar a busca
-        botao_buscar = tk.Button(frame_botoes, text="🔍 Buscar", 
-                               width=20, command=self.buscar_arquivos)
-        botao_buscar.grid(row=0, column=0, padx=(0, 40))
+        self.botao_buscar = tk.Button(self.frame_botoes, text="🔍 Buscar", 
+                                    width=20, command=self.buscar_arquivos)
+        self.botao_buscar.grid(row=0, column=0, padx=(0, 40))
 
         # Botão para limpar os campos
-        botao_limpar = tk.Button(frame_botoes, text="🧹 Limpar", 
-                               width=20, command=self.limpar_campos)
-        botao_limpar.grid(row=0, column=1, padx=0)
+        self.botao_limpar = tk.Button(self.frame_botoes, text="🧹 Limpar", 
+                                    width=20, command=self.limpar_campos)
+        self.botao_limpar.grid(row=0, column=1, padx=0)
+
+    def create_theme_button(self):
+        """Cria o botão para mudar o tema"""
+        self.botao_tema = tk.Button(self.root, text="🎨 Mudar Tema", 
+                                  command=self.mudar_tema)
+        self.botao_tema.grid(row=7, column=1, sticky='e', padx=5, pady=5)
 
     def create_status_label(self):
         """Cria o label que exibe o status da operação"""
-        status_label = tk.Label(self.root, textvariable=self.status_var, 
-                              fg="blue", anchor='w', bg=self.bgcolor)
-        status_label.grid(row=5, column=0, columnspan=2, sticky='w', padx=5)
+        self.status_label = tk.Label(self.root, textvariable=self.status_var, 
+                                   fg="blue", anchor='w', bg=self.bgcolor)
+        self.status_label.grid(row=5, column=0, columnspan=2, sticky='w', padx=5)
 
     def create_results_text(self):
         """Cria a área de texto rolável para exibir os resultados"""
         self.resultado_text = scrolledtext.ScrolledText(self.root, wrap=tk.WORD)
         self.resultado_text.grid(row=6, column=0, columnspan=2, 
-                                sticky='nsew', padx=5, pady=10)
+                               sticky='nsew', padx=5, pady=10)
+
+    def mudar_tema(self):
+        """Muda o tema da aplicação gerando uma nova cor de fundo aleatória"""
+        self.bgcolor = gerar_cor_clara()
+        self.atualizar_cores()
+
+    def atualizar_cores(self):
+        """Atualiza todas as cores dos widgets para o novo tema"""
+        # Atualiza a cor de fundo da janela principal
+        self.root.configure(background=self.bgcolor)
+        
+        # Atualiza cores de fundo de todos os widgets
+        widgets = [
+            self.label_nome, self.label_caminho, self.frame_caminho,
+            self.frame_botoes, self.status_label
+        ]
+        
+        for widget in widgets:
+            widget.configure(bg=self.bgcolor)
 
     def buscar_arquivos(self):
         """
@@ -127,7 +165,7 @@ class FileFinderApp:
         # Limpa a área de resultados
         self.resultado_text.delete('1.0', tk.END)
         # Atualiza o status para indicar que a busca está em andamento
-        self.status_var.set("🔍 Buscando...")
+        self.status_var.set("🔍 Buscando...              ")
         self.root.update_idletasks()  # Atualiza a interface imediatamente
 
         # Obtém os valores dos campos de entrada
@@ -185,7 +223,6 @@ def main():
     """
     Função principal que inicia a aplicação
     """
-    
     root = tk.Tk()  # Cria a janela principal
     app = FileFinderApp(root)  # Instancia nossa aplicação
     root.mainloop()  # Inicia o loop principal da interface
