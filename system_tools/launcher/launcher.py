@@ -18,6 +18,13 @@ class WindowsLauncher:
         self.root.title("Launcher de Ferramentas do Windows")
         self.root.geometry("800x600")
         self.root.minsize(600, 400)
+        
+        # Adicione esta linha para configurar o ícone
+        try:
+            self.root.iconbitmap("launcher.ico")
+        except Exception as e:
+            print(f"Não foi possível carregar o ícone: {e}")
+        
 
         self.cpu_var = tk.StringVar(value="CPU: 0%")
         self.ram_var = tk.StringVar(value="RAM: 0%")
