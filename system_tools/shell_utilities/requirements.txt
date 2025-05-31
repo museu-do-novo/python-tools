@@ -1,0 +1,4 @@
+pyinstaller
+pynput
+mega.py
+psutil
