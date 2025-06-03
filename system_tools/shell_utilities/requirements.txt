@@ -1,10 +1,5 @@
-colorama==0.4.6
-cryptography==42.0.5
 fnmatch==1.0.0
 getpass==1.0.0
-mega.py==1.0.8
-psutil==5.9.8
-python-wget==3.2
 requests==2.31.0
 shutil==1.0.0
 tarfile==1.0.0
@@ -13,3 +8,10 @@ pathlib==1.0.1
 platform==1.0.0
 subprocess==0.1.0
 time==1.0.0
+colorama
+psutil
+wget
+cryptography
+mega
+pythonping
+netifaces
