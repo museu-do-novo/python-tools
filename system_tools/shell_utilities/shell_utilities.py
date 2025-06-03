@@ -15,7 +15,7 @@ import platform
 from pathlib import Path
 from colorama import Fore, Style, init as colorama_init
 import wget as wget_module
-from mega import Mega
+import mega
 
 # === Initialize colorama (for cross-platform support) ===
 colorama_init(autoreset=True)
@@ -417,11 +417,34 @@ def which(cmd):
             return full_path
     return None
 
-def ping(host, count=4):
-    """Ping host (like 'ping -c')"""
-    result = subprocess.run(['ping', '-c', str(count), host], capture_output=True, text=True)
-    return result.stdout
-
+def ping(host, count=4, timeout=2, verbose=False):
+    """
+    Ping host (platform independent)
+    
+    Args:
+        host (str): Hostname or IP address
+        count (int): Number of pings to send
+        timeout (int): Timeout in seconds
+        verbose (bool): Show detailed output
+        
+    Returns:
+        str: Ping statistics summary
+    """
+    try:
+        from pythonping import ping as py_ping
+        response = py_ping(
+            target=host,
+            count=count,
+            timeout=timeout,
+            verbose=verbose
+        )
+        return str(response)
+    except ImportError:
+        message("pythonping module not installed. Run: pip install pythonping", "error")
+        return None
+    except Exception as e:
+        message(f"Ping failed: {e}", "error")
+        return None
 
 # === MEGA.nz integration ===
 
@@ -480,3 +503,6 @@ def mega_delete(file_id):
     if not _mega_session:
         raise Exception("Not authenticated.")
     _mega_session.destroy(file_id)
+
+
+
