@@ -1,59 +1,177 @@
 """
 shell_utilities.py - A Python implementation of common Linux/Unix commands
 """
-
+# === Built-in modules ===
 import os
-import shutil
-import urllib.request
-import fnmatch
-import tarfile
-import psutil
-import subprocess
+import re
 import time
+import tarfile
+import fnmatch
+import shutil
+import random
 import getpass
 import platform
+import subprocess
 from pathlib import Path
-from colorama import Fore, Style, init as colorama_init
+from typing import Literal, Optional
+
+# === Third-party modules ===
+import psutil
+from mega import Mega
 import wget as wget_module
-import mega
+from colorama import Fore, Back, Style, init as colorama_init
+from cryptography.fernet import Fernet
 
 # === Initialize colorama (for cross-platform support) ===
 colorama_init(autoreset=True)
 
-# === Message printing utility with verbosity and color control ===
-def message(text, level='info', verbose=True):
+
+
+def message(
+    text: str,
+    level: Literal['info', 'success', 'warning', 'error', 'debug', 'random'] = 'info',
+    verbose: bool = True,
+    custom_color: Optional[Literal[
+        'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+        'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue',
+        'lightmagenta', 'lightcyan', 'lightwhite'
+    ]] = None,
+    custom_style: Optional[Literal['bright', 'dim', 'normal', 'reset']] = None
+) -> None:
     """
-    Print colored terminal messages with optional verbosity control.
+    Print colored terminal messages with verbosity control, random colors, and custom styling.
 
     Args:
-        text (str): Message text.
-        level (str): Message type: 'info', 'success', 'warning', 'error', 'debug'.
-        verbose (bool): If False, message is suppressed.
+        text: Message text to display.
+        level: Message type. Pre-defined options: 'info', 'success', 'warning', 'error', 'debug', 'random'.
+        verbose: If False, suppresses the message.
+        custom_color: Overrides 'level' with a specific color (e.g., 'red', 'lightblue').
+        custom_style: Optional style for custom_color (e.g., 'bright', 'dim').
+
+    Examples:
+        >>> message("Success!", level="success")
+        >>> message("Custom color", custom_color="lightmagenta", custom_style="bright")
     """
     if not verbose:
         return
 
+    # Cores padrão para cada nível (com Style.NORMAL explícito para evitar conflitos)
     colors = {
-        'info': Fore.CYAN,
-        'success': Fore.GREEN,
-        'warning': Fore.YELLOW,
-        'error': Fore.RED,
-        'debug': Fore.MAGENTA
+        'info': Fore.CYAN + Style.NORMAL,
+        'success': Fore.GREEN + Style.NORMAL,
+        'warning': Fore.YELLOW + Style.NORMAL,
+        'error': Fore.RED + Style.NORMAL,
+        'debug': Fore.MAGENTA + Style.NORMAL  # Corrigido para garantir cor magenta
     }
 
-    prefixes = {
-        'info': '[INFO]',
-        'success': '[OK]',
-        'warning': '[WARN]',
-        'error': '[ERR]',
-        'debug': '[DBG]'
+    # Mapeamento de cores disponíveis para customização
+    available_colors = {
+        'black': Fore.BLACK,
+        'red': Fore.RED,
+        'green': Fore.GREEN,
+        'yellow': Fore.YELLOW,
+        'blue': Fore.BLUE,
+        'magenta': Fore.MAGENTA,
+        'cyan': Fore.CYAN,
+        'white': Fore.WHITE,
+        'lightblack': Fore.LIGHTBLACK_EX,
+        'lightred': Fore.LIGHTRED_EX,
+        'lightgreen': Fore.LIGHTGREEN_EX,
+        'lightyellow': Fore.LIGHTYELLOW_EX,
+        'lightblue': Fore.LIGHTBLUE_EX,
+        'lightmagenta': Fore.LIGHTMAGENTA_EX,
+        'lightcyan': Fore.LIGHTCYAN_EX,
+        'lightwhite': Fore.LIGHTWHITE_EX
     }
 
-    color = colors.get(level.lower(), Fore.WHITE)
-    prefix = prefixes.get(level.lower(), '[MSG]')
+    # Mapeamento de estilos disponíveis para customização
+    available_styles = {
+        'bright': Style.BRIGHT,
+        'dim': Style.DIM,
+        'normal': Style.NORMAL,
+        'reset': Style.RESET_ALL
+    }
 
-    print(f"{color}{prefix} {text}{Style.RESET_ALL}")
+    # Todas as cores disponíveis para o modo random (incluindo versões light e combinações)
+    all_random_colors = [
+        Fore.BLACK, Fore.RED, Fore.GREEN, Fore.YELLOW,
+        Fore.BLUE, Fore.MAGENTA, Fore.CYAN, Fore.WHITE,
+        Fore.LIGHTBLACK_EX, Fore.LIGHTRED_EX, Fore.LIGHTGREEN_EX,
+        Fore.LIGHTYELLOW_EX, Fore.LIGHTBLUE_EX, Fore.LIGHTMAGENTA_EX,
+        Fore.LIGHTCYAN_EX, Fore.LIGHTWHITE_EX,
+        
+        # Combinações especiais para mais variedade
+        Fore.YELLOW + Back.BLUE,
+        Fore.CYAN + Back.MAGENTA,
+        Fore.WHITE + Back.RED,
+        Fore.LIGHTYELLOW_EX + Back.LIGHTBLUE_EX,
+        Style.BRIGHT + Fore.GREEN,
+        Style.BRIGHT + Fore.RED,
+        Style.BRIGHT + Fore.CYAN,
+        Style.DIM + Fore.YELLOW
+    ]
 
+    # Se custom_color foi especificado, usa essa cor
+    if custom_color is not None:
+        color = available_colors.get(custom_color.lower(), Fore.WHITE)
+        style = available_styles.get(custom_style.lower(), Style.NORMAL) if custom_style else Style.NORMAL
+        print(f"{style}{color}{text}{Style.RESET_ALL}")
+    else:
+        if level.lower() == 'random':
+            # Seleciona uma cor aleatória diferente das cores padrão
+            default_colors = set(colors.values())
+            available_rand_colors = [c for c in all_random_colors if c not in default_colors]
+            
+            # Se não houver cores disponíveis, usa todas
+            color = random.choice(available_rand_colors) if available_rand_colors else random.choice(all_random_colors)
+        else:
+            color = colors.get(level.lower(), Fore.WHITE)
+
+        print(f"{color}{text}{Style.RESET_ALL}")
+
+def banner(title: str) -> None:
+    """Display a perfectly symmetrical formatted header with borders.
+    
+    Args:
+        title: The title to display (will be converted to uppercase)
+    """
+    # Constants for layout
+    MIN_WIDTH = 60  # Minimum banner width
+    BORDER_CHAR = '='
+    CORNER_CHAR = '*'
+    SIDE_PADDING = 1  # Minimum space between border and text
+    
+    # Format the title (uppercase)
+    formatted_title = title.upper()
+    title_length = len(formatted_title)
+    
+    # Calculate the total required width
+    required_width = max(
+        MIN_WIDTH,  # Use either the minimum width or...
+        2 + (2 * SIDE_PADDING) + title_length  # ...the space needed for the title
+    )
+    
+    # Calculate available padding space
+    total_padding_space = required_width - 2 - title_length  # 2 for the corner chars
+    left_padding = total_padding_space // 2
+    right_padding = total_padding_space - left_padding  # Handles odd numbers
+    
+    # Build the perfectly aligned middle line
+    middle_line = (
+        CORNER_CHAR + 
+        ' ' * left_padding + 
+        formatted_title + 
+        ' ' * right_padding + 
+        CORNER_CHAR
+    )
+    
+    # Border matches exactly with the corners
+    border = BORDER_CHAR * required_width
+    
+    # Output all parts with random colors
+    message(f"\n{border}", custom_color='lightgreen', custom_style='bright')
+    message(middle_line, level="random")
+    message(border, custom_color='lightgreen', custom_style='bright')
 
 # === Core shell utilities ===
 
@@ -166,13 +284,13 @@ def sleep(seconds):
     """Pause execution (like 'sleep')"""
     time.sleep(seconds)
 
-def find(rootdir="~", ext=None, mode="file", save_list=True, output_file="FilesFound.txt", verbose=True):
+def find(rootdir="~", ext=None, mode="file", save_list=False, output_file="FilesFound.txt", verbose=True):
     """
-    Recursively search for files or directories.
+    Recursively search for files or directories, supporting wildcards (*, ?) in extensions.
 
     Args:
         rootdir (str): Base directory to start search.
-        ext (str): File extension to filter (only applies in 'file' mode).
+        ext (str): File extension/wildcard pattern (e.g., "*.txt", "*.pdf", "*").
         mode (str): Search mode: 'file', 'dir', or 'all'.
         save_list (bool): Whether to save results to a file.
         output_file (str): Output file path (used if save_list=True).
@@ -184,7 +302,7 @@ def find(rootdir="~", ext=None, mode="file", save_list=True, output_file="FilesF
     def expand_user_path(path):
         return os.path.expanduser(path)
 
-    def find_items(directory, extension, mode):
+    def find_items(directory, pattern, mode):
         item_list = []
         directory = expand_user_path(directory)
 
@@ -197,7 +315,7 @@ def find(rootdir="~", ext=None, mode="file", save_list=True, output_file="FilesF
                         message(full_dir, level="debug", verbose=verbose)
                 if mode in ("file", "all"):
                     for f in files:
-                        if extension is None or f.lower().endswith(extension.lower()):
+                        if pattern is None or fnmatch.fnmatch(f.lower(), pattern.lower()):
                             full_file = os.path.join(root, f)
                             item_list.append(full_file)
                             message(full_file, level="debug", verbose=verbose)
@@ -208,14 +326,16 @@ def find(rootdir="~", ext=None, mode="file", save_list=True, output_file="FilesF
 
         return item_list
 
-    clear()
     if ext is None and mode == "file":
-        ext = input("Extension: ").strip()
+        ext = input("Extension/pattern (e.g., '*.txt' or '*'): ").strip()
+
+    # Padrão padrão para "todos os arquivos" se ext for None ou "*"
+    pattern = "*" if ext in (None, "*") else ext
 
     search_path = expand_user_path(rootdir)
-    message(f"Searching in {search_path} (mode={mode}, ext={ext})...", level="info", verbose=verbose)
+    message(f"Searching in {search_path} (mode={mode}, pattern={pattern})...", level="info", verbose=verbose)
 
-    results = find_items(search_path, ext, mode)
+    results = find_items(search_path, pattern, mode)
 
     if save_list:
         try:
@@ -227,7 +347,6 @@ def find(rootdir="~", ext=None, mode="file", save_list=True, output_file="FilesF
 
     message(f"Total found: {len(results)}", level="info", verbose=verbose)
     return results
-
 
 from cryptography.fernet import Fernet
 
@@ -445,64 +564,145 @@ def ping(host, count=4, timeout=2, verbose=False):
     except Exception as e:
         message(f"Ping failed: {e}", "error")
         return None
-
 # === MEGA.nz integration ===
+'''
+MEGA PROJECT ACCOUNT
+  email(tempmail): vedomi8632@nab4.com
+  username:        shell_utilities
+  password:        shell_utilities
+  recovery key:    GXQE7NVwRJpuB52KwkhzzQ
+'''
 
 _mega_session = None
 
-def mega_login(email=None, password=None):
-    """Login to MEGA.nz (anonymous or authenticated)"""
+def mega_login(email=None, password=None, verbose=True):
+    """
+    Realiza login na conta MEGA. Se não for fornecido email e senha, faz login anônimo.
+    """
     global _mega_session
-    mega = Mega()
-    _mega_session = mega.login(email, password) if email and password else mega.login()
-    return True
+    try:
+        message("Efetuando login no MEGA...", level="info")
+        mega = Mega()
+        _mega_session = mega.login(email, password) if email and password else mega.login()
+        message("Login realizado com sucesso.", level='success', verbose=verbose)
+        return True
+    except Exception as e:
+        message(f"Erro ao fazer login: {e}", level='error', verbose=verbose)
+        return False
 
-def mega_logout():
-    """Logout from MEGA (clear session)"""
+def mega_logout(verbose=True):
+    """
+    Faz logout limpando a sessão ativa.
+    """
     global _mega_session
     _mega_session = None
+    message("Logout efetuado.", level="info", verbose=verbose)
 
-def mega_upload(filepath):
-    """Upload file to MEGA account"""
+def mega_upload(filepath, verbose=True):
+    """
+    Envia um arquivo para o MEGA. Retorna o link público.
+    """
     if not _mega_session:
-        raise Exception("Not authenticated. Use mega_login() first.")
-    return _mega_session.upload(filepath)
+        raise Exception("Você precisa fazer login primeiro.")
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Arquivo não encontrado: {filepath}")
+    try:
+        file = _mega_session.upload(filepath)
+        link = _mega_session.get_upload_link(file)
+        message(f"Upload concluído: {filepath}", level="success", verbose=verbose)
+        message(f"Link público: {link}", level="info", verbose=verbose)
+        return link
+    except Exception as e:
+        message(f"Falha no upload: {e}", level="error", verbose=verbose)
+        return None
 
-def mega_get_link(file_dict):
-    """Get shareable link from MEGA file object"""
+def mega_list_files(verbose=True):
+    """
+    Lista todos os arquivos disponíveis na conta MEGA.
+    Retorna uma lista de dicionários com informações.
+    """
     if not _mega_session:
-        raise Exception("Not authenticated.")
-    return _mega_session.get_upload_link(file_dict)
+        raise Exception("Você precisa estar autenticado.")
+    try:
+        files = _mega_session.get_files()
+        lista = []
+        for fid, f in files.items():
+            entry = {
+                'id': fid,
+                'name': f['name'],
+                'size_kb': f['s'] // 1024
+            }
+            lista.append(entry)
+            message(f"{fid} - {f['name']} ({entry['size_kb']} KB)", level="debug", verbose=verbose)
+        return lista
+    except Exception as e:
+        message(f"Erro ao listar arquivos: {e}", level="error", verbose=verbose)
+        return []
 
-def mega_list_files():
-    """List all files in MEGA account"""
+def mega_get_link(file_id, verbose=True):
+    """
+    Retorna o link público de um arquivo a partir do ID.
+    """
     if not _mega_session:
-        raise Exception("Not authenticated.")
-    files = _mega_session.get_files()
-    return [{
-        'name': f['name'],
-        'size': f['s'],
-        'created': f['c'],
-        'id': file_id
-    } for file_id, f in files.items()]
+        raise Exception("Você precisa estar autenticado.")
+    try:
+        files = _mega_session.get_files()
+        if file_id not in files:
+            raise ValueError(f"ID inválido: {file_id}")
+        link = _mega_session.get_upload_link(files[file_id])
+        message(f"Link de compartilhamento: {link}", level="info", verbose=verbose)
+        return link
+    except Exception as e:
+        message(f"Erro ao obter link: {e}", level="error", verbose=verbose)
+        return None
 
-def mega_download_url(url, dest_filename=None):
-    """Download public MEGA URL"""
+def mega_download_file(file_id, dest_path='.', verbose=True):
+    """
+    Baixa um arquivo do MEGA usando seu ID.
+    """
     if not _mega_session:
-        mega_login()
-    _mega_session.download_url(url, dest_filename)
+        raise Exception("Você precisa estar autenticado.")
+    try:
+        files = _mega_session.get_files()
+        if file_id not in files:
+            raise ValueError(f"ID inválido: {file_id}")
+        _mega_session.download(files[file_id], dest_path)
+        message(f"Download concluído para: {dest_path}", level="success", verbose=verbose)
+    except Exception as e:
+        message(f"Falha no download: {e}", level="error", verbose=verbose)
 
-def mega_download_file(file_dict, dest_path='.'):
-    """Download file from MEGA account"""
+def mega_download_url(url, dest_filename=None, verbose=True):
+    """
+    Baixa um arquivo de uma URL pública do MEGA.
+    """
+    global _mega_session
     if not _mega_session:
-        raise Exception("Not authenticated.")
-    _mega_session.download(file_dict, dest_path)
+        _mega_session = Mega().login()
+    try:
+        _mega_session.download_url(url, dest_filename)
+        message(f"Download via URL concluído: {url}", level="success", verbose=verbose)
+    except Exception as e:
+        message(f"Falha no download da URL: {e}", level="error", verbose=verbose)
 
-def mega_delete(file_id):
-    """Delete file from MEGA account"""
+def mega_delete(file_id, verbose=True):
+    """
+    Remove um arquivo da conta MEGA usando o ID.
+    """
     if not _mega_session:
-        raise Exception("Not authenticated.")
-    _mega_session.destroy(file_id)
+        raise Exception("Você precisa estar autenticado.")
+    try:
+        _mega_session.destroy(file_id)
+        message(f"Arquivo {file_id} removido com sucesso.", level="success", verbose=verbose)
+    except Exception as e:
+        message(f"Erro ao deletar arquivo: {e}", level="error", verbose=verbose)
 
-
-
+# while True:
+#     try:
+#         clear()
+#         banner("HELLO WORLD")
+#         # Add a small delay to prevent flickering and reduce CPU usage
+#         time.sleep(0.1)
+#     except KeyboardInterrupt:
+#         clear()
+#         banner("GOODBYE WORLD")
+#         break  # Exit the loop after handling the interrupt
