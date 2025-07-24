@@ -6,9 +6,9 @@ from yt_dlp import YoutubeDL
 
 # variables
 baseurl = "https://www.eporner.com"
-# search_path = "/search/curvy-latina-natalia/"
-search_path = "/search/cu/"
+search_path = "/search/curvy-latina-natalia/"
 linksfile = "links.txt"
+downloadpath = os.path.expanduser('~/Videos/nat/')
 
 def downloadvideos(linksfile, path):
     # Verifica se o arquivo de links existe
@@ -36,6 +36,7 @@ def downloadvideos(linksfile, path):
         'nooverwrites': True,
         'quiet': False,
         'ignoreerrors': True
+        'continue': True
     }
 
     print(f"🚀 Baixando vídeos de '{linksfile}' para '{path}'...\n")
@@ -76,7 +77,7 @@ def main():
         url = f"{baseurl}{search_path}{page}/"
         response = requests.get(url)
         soup = bs(response.text, 'html.parser')
-        openinbrowser(url)
+        # openinbrowser(url)
         # Extrair os links de vídeo
         for a in soup.find_all('a', href=True):
             if re.search(r'^/video-\w+', a['href']):
@@ -95,6 +96,7 @@ def main():
 
     savefile(linksfile, clean_link, clean=True)
     print(f"\n✅ {len(clean_link)} links salvos em {linksfile}")
+    downloadvideos(linksfile=linksfile, path=downloadpath)
 
 if __name__ == "__main__":
     main()
