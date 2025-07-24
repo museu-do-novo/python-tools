@@ -2,6 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import os
+
+windowsize = os.get_terminal_size()
+
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -19,14 +22,14 @@ def savetofile(filename, content):
 def pegar_links_temporadas(busca_url: str, termo_secundario: str = ""):
     res = requests.get(busca_url)
     res.raise_for_status()
-    soup = BeautifulSoup(res.text, 'html.parser')
+    soup = BeautifulSoup(res.content, 'html.parser')
 
     temporadas = []
     for a in soup.find_all('a', class_='title', href=True):
         titulo = a.text.strip()
         link = a['href']
         # ✅ Filtro para garantir que só pegue temporadas completas da série certa
-        if termo_busca in titulo.lower() and termo_secundario in titulo.lower():
+        if termo_secundario in titulo.lower():
             temporadas.append((titulo, link))
     return temporadas
 
@@ -34,7 +37,7 @@ def pegar_links_temporadas(busca_url: str, termo_secundario: str = ""):
 def pegar_magnet_links(pagina_temporada):
     res = requests.get(pagina_temporada)
     res.raise_for_status()
-    soup = BeautifulSoup(res.text, 'html.parser')
+    soup = BeautifulSoup(res.content, 'html.parser')
 
     magnet_links = []
     for a in soup.find_all('a', href=True):
@@ -48,10 +51,10 @@ def openinbrowser(url):
 
 def main():
     clear()
-    # old 
-    # search_term = "mr+robot"
     search_term = input("🔍 Digite o termo de busca: ").strip()
     secundary_term = input("🔍 Digite o termo secundário (opcional): ").strip()
+    clear()
+
 
     url_busca = f'https://www.starckfilmes.online/?s={search_term}'
     temporadas = pegar_links_temporadas(url_busca, secundary_term)
@@ -66,9 +69,9 @@ def main():
         magnet_links = pegar_magnet_links(link)
         if magnet_links:
             for magnet in magnet_links:
+                print('*' * windowsize.columns)
                 print(f'🔗 {magnet}')
-                print(f'{magnet}')
-                print('=' * 30)
+                print('*' * windowsize.columns)
         else:
             print('⚠️ Nenhum magnet link encontrado.')
 
