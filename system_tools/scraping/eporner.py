@@ -1,3 +1,4 @@
+#!/home/nad/myenv/bin/python3
 import requests
 from bs4 import BeautifulSoup as bs
 import re
@@ -35,7 +36,7 @@ def downloadvideos(linksfile, path):
         'noplaylist': True,
         'nooverwrites': True,
         'quiet': False,
-        'ignoreerrors': True
+        'ignoreerrors': True,
         'continue': True
     }
 
