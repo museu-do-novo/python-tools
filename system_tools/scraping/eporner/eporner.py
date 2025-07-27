@@ -1,4 +1,5 @@
-#!/home/nad/myenv/bin/python3
+#!env_eporner/bin/python3
+
 import requests
 from bs4 import BeautifulSoup as bs
 import re
