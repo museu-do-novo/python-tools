@@ -1,0 +1,65 @@
+import re
+import requests
+from bs4 import beautifulsoup4 as bs
+
+"""
+
+scraper para o site de eboks/revistas/pdf 4kw.in
+
+
+"""
+
+
+pesquisa = 'car'
+url = f'https://4kw.in/page/1/?s={pesquisa}'
+
+response = requests.get(url).content.strip()
+soup = bs(response, 'html.parser')
+
+"""
+
+PAGINA DE BUSCA
+logo na pagina do resultado da busca podemos ver a seguinte estrutrutura para o primeiro termo da pesquisa 'car'
+
+
+<div class="view view-first" style="margin-right:12px; margin-bottom:12px; float:left;">
+		                    <a href="https://4kw.in/the-metal-detecting-bible-even-more-helpful-tips-expert-tricks-and-insider-secrets-for-finding-hidden-treasures/"><img width="380" height="488" src="https://4kw.in/wp-content/uploads/2023/10/The-Metal-Detecting-Bible-Even-More-Helpful-Tips-Expert-Tricks-and-Insider-Secrets-for-Finding-Hidden-Treasures.jpg" class="alignleft wp-post-image" alt="The Metal Detecting Bible – Even More Helpful Tips, Expert Tricks, and Insider Secrets for Finding Hidden Treasures" title="The Metal Detecting Bible – Even More Helpful Tips, Expert Tricks, and Insider Secrets for Finding Hidden Treasures" decoding="async" fetchpriority="high"></a>		<a href="https://4kw.in/the-metal-detecting-bible-even-more-helpful-tips-expert-tricks-and-insider-secrets-for-finding-hidden-treasures/">
+                <div class="mask">
+                    <h2>The Metal Detecting Bible – Even More Helpful Tips, Expert Tricks, and Insider Secrets for Finding Hidden Treasures</h2>
+                                        <p>383 Views</p>
+					  
+                 
+                </div> </a>
+            </div>
+
+podemos ver que o soup vai sera lgo tipo:
+	info_titles = soup.find_all('div', class_="view view-first, href=True)
+	
+temos:
+  uma tag title que contem o titulo do nosso livro
+  uma tag href que contem um link que precisamos para acessar a pagina do titulo
+
+"""
+
+PAGINA DO TITULO
+
+
+
+
+PAGINA DE DOWNLOAD
+na pagina redirecionada de download a flag para pegar o arquivo e: 
+	<input name="url" type"hidden" value="<o arquivo>"
+
+PAGINACAO:
+
+
+
+
+"""
+
+
+obs: o acesso a https://4kw.in/wp-content/uploads/ e negado(403)
+
+
+
+"""
