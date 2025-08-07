@@ -1,6 +1,5 @@
 #!/home/nad/myenv/bin/python3
 # -*- coding: utf-8 -*-
-
 import os
 import time
 import json
@@ -11,6 +10,16 @@ from bs4 import BeautifulSoup
 from colorama import Fore, Back, Style
 
 defaultoutputfile = "starckfilmes.links"
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Connection": "keep-alive",
+    "Referer": "https://www.google.com/",
+}
+
 def info():
     largura = os.get_terminal_size().columns
     separador = '⚡' * largura
@@ -49,26 +58,6 @@ python starckfilmes.py -s "<sua_quest>" [-f "<filtro_sábio>"] [-o "<grimório_d
 """
     print(epilogo)
 
-
-# cria um parser de argumentos para receber os parametros da linha de comando
-# precisou ficar no escopo global
-parser = argparse.ArgumentParser(prog=os.path.basename(__file__), description='Starckfilmes.online scraper/RIPPER', epilog=info())
-parser.add_argument('-s', '--search', required=False, default='*', help='Termo de busca')
-parser.add_argument('-f', '--filter', default="", help='Filtro para titulos (opcional)')
-parser.add_argument('-o', '--output', nargs='?', default="starckfilmes.links", 
-                    help=f'Salvar links em arquivo (padrão: "starckfilmes.link" quando flag usada)')
-args = parser.parse_args()
-
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Connection": "keep-alive",
-    "Referer": "https://www.google.com/",
-}
-
-
 # Funcao para ajudar a controlar a verbosidade
 def print_message(message, color=Fore.WHITE, verbose=False) -> None:
     """
@@ -95,10 +84,10 @@ def random_color(
     """
     Retorna uma cor aleatória customizável com base nos tipos de cores disponíveis no colorama.
 
-    Args:
-        usar_normais (bool): Incluir cores normais (Fore.RED, Fore.GREEN, ...)
-        usar_brilhantes (bool): Incluir cores brilhantes (Fore.LIGHTRED_EX, ...)
-        usar_contraste (bool): Incluir combinações de Fore + Back
+    Args
+        normal_color=(bool): Incluir cores normais (Fore.RED, Fore.GREEN, ...)
+        bright_color= (bool): Incluir cores brilhantes (Fore.LIGHTRED_EX, ...)
+        contrast_color=(bool): Incluir combinações de Fore + Back
         usar_estilos (bool): Incluir estilos com Style.BRIGHT
         usar_combinacoes_especiais (bool): Incluir misturas visuais únicas com Style + Back
 
@@ -204,25 +193,25 @@ def banner(title: str, verbose: bool = True) -> None:
     
     # Print the banner with random colors
     color1 = random_color(
-    usar_brilhantes=True,
-    usar_normais=True,
-    usar_contraste=False,
-    usar_estilos=False,
-    usar_combinacoes_especiais=False
+    bright_color=True,
+    normal_color=True,
+    contrast_color=False,
+    use_styles=False,
+    special_combinations=False
 )
     color2 = random_color(
-    usar_brilhantes=True,
-    usar_normais=True,
-    usar_contraste=False,
-    usar_estilos=False,
-    usar_combinacoes_especiais=False
+    bright_color=True,
+    normal_color=True,
+    contrast_color=False,
+    use_styles=False,
+    special_combinations=False
 )
     color3 = random_color(
-    usar_brilhantes=True,
-    usar_normais=True,
-    usar_contraste=False,
-    usar_estilos=False,
-    usar_combinacoes_especiais=False
+    bright_color=True,
+    normal_color=True,
+    contrast_color=False,
+    use_styles=False,
+    special_combinations=False
 )
     
     print_message('\n' + top_border, color=color1, verbose=verbose)
@@ -242,6 +231,34 @@ def clear() -> None:
     """
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def clearoutputfile(filename):
+    if os.path.exists(filename):
+        os.remove(filename)
+
+def openinbrowser(url: str) -> None:
+    """
+    Abre o navegador com a URL fornecida.
+    Args:
+        url (str): A URL para abrir no navegador.
+    Returns:
+        None
+    """
+
+    os.system(f"firefox --private-window {url}")
+
+
+def salvar_json(dados, filename="dump.json"):
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+        print_message(f"📁 Dump JSON salvo com sucesso em: {filename}", color=Fore.GREEN)
+    except Exception as e:
+        print_message(f"❌ Falha ao salvar JSON: {e}", color=Fore.RED)
+
+
+#==================================================================================================================================
+#==================================================================================================================================
+#==================================================================================================================================
 
 # faz a busca pelo link de pesquisa da pagina starckfilmes.online e localiza o lugar dos resultados que aqui chamei de temporadas
 # depois pega os links magnet de cada temporada encontrada (o padrao do site e de que cada temporada tenha um link magnet)
@@ -255,6 +272,8 @@ def pegar_links_titulos(busca_url: str, filtro: str = "", verbose: bool = True):
     Returns:
         list: Lista com tuplas (titulo, link)
     """
+
+
     # faz a requisicao para a pagina de busca
     res = requests.get(busca_url, headers=headers)
     # verifica se a requisicao foi bem sucedida
@@ -295,7 +314,6 @@ def pegar_magnet_links(pagina_temporada):
 
     """
 
-
     # faz a requisicao para cada link de pagina encontrado no feed
     res = requests.get(pagina_temporada, headers=headers)
     # verifica se a requisicao foi bem sucedida
@@ -320,19 +338,6 @@ def pegar_magnet_links(pagina_temporada):
         print_message(f"[INFO]: {len(magnet_links)} links magnet encontrados na página: {pagina_temporada}", color=Fore.GREEN)
     # retorna a lista de links magnet encontrados em cada pagina do feed 
     return magnet_links
-
-def clearoutputfile(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-
-
-# def salvar_json(dados, filename="dump.json"):
-#     try:
-#         with open(filename, "w", encoding="utf-8") as f:
-#             json.dump(dados, f, ensure_ascii=False, indent=2)
-#         print_message(f"📁 Dump JSON salvo com sucesso em: {filename}", color=Fore.GREEN)
-#     except Exception as e:
-#         print_message(f"❌ Falha ao salvar JSON: {e}", color=Fore.RED)
 
 
 # mexer no header para aparecer so uma vez no arquivo
@@ -452,17 +457,28 @@ def main() -> None:
     """
     Função principal que executa o script.
     execucao:
-        1 - Limpa a tela
-        2 - Imprime o banner
-        3 - Verifica se o termo de busca foi fornecido
-        4 - Monta a URL de busca
-        5 - Executa o crawler com controle total
-        6 - Finaliza o script
+        1 - parseia os argumentos da linha de comando
+        2 - Limpa a tela
+        3 - Imprime o banner
+        4 - Verifica se o termo de busca foi fornecido
+        5 - Monta a URL de busca
+        6 - Executa o crawler com controle total
+        7 - Finaliza o script
     Args:
         None
     Returns:
         None
     """
+
+
+    # cria um parser de argumentos para receber os parametros da linha de comando
+    # precisou ficar no escopo global
+    parser = argparse.ArgumentParser(prog=os.path.basename(__file__), description='Starckfilmes.online scraper/RIPPER', epilog=info())
+    parser.add_argument('-s', '--search', required=False, default='*', help='Termo de busca')
+    parser.add_argument('-f', '--filter', default="", help='Filtro para titulos (opcional)')
+    parser.add_argument('-o', '--output', nargs='?', default="starckfilmes.links", help=f'Salvar links em arquivo (padrão: "starckfilmes.link" quando flag usada)')
+    args = parser.parse_args()
+
     clear()
     clearoutputfile(args.output or "starckfilmes.link")
     # 🎬 Introdução com efeito visual
@@ -505,16 +521,6 @@ def main() -> None:
     # 🎉 Footer charmoso
     print_message("\n╰────── FIM DA EXECUÇÃO ──────╯", color=Fore.MAGENTA)
 
-def openinbrowser(url: str) -> None:
-    """
-    Abre o navegador com a URL fornecida.
-    Args:
-        url (str): A URL para abrir no navegador.
-    Returns:
-        None
-    """
-
-    os.system(f"firefox --private-window {url}")
 
 
 if __name__ == '__main__':
@@ -526,31 +532,3 @@ if __name__ == '__main__':
         print_message(f"❌ Erro inesperado: {e}", color=Fore.RED)
         exit(1)
 
-"""
-
-IMPORTANTE:
-
-    RESOLVIDO:
-        SO ESTA PEGANDO A PRIMEIRA PAGINA SENDO QUE E POSSIVEL REQUISITAR VARIAS DA LISTA...
-        <div class="prev-active"> <a href="{link para a proxima pagina}> 
-        tem que ser a segunda aparicao ja que a classe de voltar e a mesma
-        na ordem de escreita vai estar sempre depois da primeira o next)
-                # Encontrar o elemento div com a classe "prev-active"
-            # next = soup.find('div', class_='prev-active')
-            # nextlink = next.find('a')['href']
-            # print(nextlink)
-
-    PROBLEMAS:
-
-
-    PULL REQUESTS:
-        1 - iterar as paginas # BASICAMANTE JA ESTA PRONTO
-        2 - criar funcao de analisar os links encontrados
-        3 - criar funcao de baixar pra 'fechar o puteiro'
-        4 - usar os headers da requisicao para baixar os magnet
-        5 - fazer requisicoes via proxies com o proxyscrape
-
-    INFOS:
-        1 - link do proxyscrape: https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&timeout=5000
-        2 - mexi no esquema de cores
-"""

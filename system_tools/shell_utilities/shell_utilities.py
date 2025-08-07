@@ -11,169 +11,244 @@ import shutil
 import random
 import getpass
 import platform
-import subprocess
 from pathlib import Path
-from typing import Literal, Optional
 
 # === Third-party modules ===
 import psutil
-from mega import Mega
-import wget as wget_module
 from colorama import Fore, Back, Style, init as colorama_init
 from cryptography.fernet import Fernet
-
+import requests
 # === Initialize colorama (for cross-platform support) ===
 colorama_init(autoreset=True)
 
-
-
-def message(
-    text: str,
-    level: Literal['info', 'success', 'warning', 'error', 'debug', 'random'] = 'info',
-    verbose: bool = True,
-    custom_color: Optional[Literal[
-        'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
-        'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue',
-        'lightmagenta', 'lightcyan', 'lightwhite'
-    ]] = None,
-    custom_style: Optional[Literal['bright', 'dim', 'normal', 'reset']] = None
-) -> None:
+def message(message, color=Fore.WHITE, verbose=False) -> None:
     """
-    Print colored terminal messages with verbosity control, random colors, and custom styling.
-
+    Imprime uma mensagem com cores para melhor visualizacao.
     Args:
-        text: Message text to display.
-        level: Message type. Pre-defined options: 'info', 'success', 'warning', 'error', 'debug', 'random'.
-        verbose: If False, suppresses the message.
-        custom_color: Overrides 'level' with a specific color (e.g., 'red', 'lightblue').
-        custom_style: Optional style for custom_color (e.g., 'bright', 'dim').
+        message (str): A mensagem a ser impressa.
+        color (str, optional): A cor da mensagem (padrao: branco).
+        verbose (bool, optional): Se a mensagem deve ser impressa (padrao: False).
 
-    Examples:
-        >>> message("Success!", level="success")
-        >>> message("Custom color", custom_color="lightmagenta", custom_style="bright")
+    Returns:
+        None
+
     """
-    if not verbose:
-        return
+    print(f"{color}{message}{Style.RESET_ALL}")
 
-    # Cores padrão para cada nível (com Style.NORMAL explícito para evitar conflitos)
-    colors = {
-        'info': Fore.CYAN + Style.NORMAL,
-        'success': Fore.GREEN + Style.NORMAL,
-        'warning': Fore.YELLOW + Style.NORMAL,
-        'error': Fore.RED + Style.NORMAL,
-        'debug': Fore.MAGENTA + Style.NORMAL  # Corrigido para garantir cor magenta
-    }
 
-    # Mapeamento de cores disponíveis para customização
-    available_colors = {
-        'black': Fore.BLACK,
-        'red': Fore.RED,
-        'green': Fore.GREEN,
-        'yellow': Fore.YELLOW,
-        'blue': Fore.BLUE,
-        'magenta': Fore.MAGENTA,
-        'cyan': Fore.CYAN,
-        'white': Fore.WHITE,
-        'lightblack': Fore.LIGHTBLACK_EX,
-        'lightred': Fore.LIGHTRED_EX,
-        'lightgreen': Fore.LIGHTGREEN_EX,
-        'lightyellow': Fore.LIGHTYELLOW_EX,
-        'lightblue': Fore.LIGHTBLUE_EX,
-        'lightmagenta': Fore.LIGHTMAGENTA_EX,
-        'lightcyan': Fore.LIGHTCYAN_EX,
-        'lightwhite': Fore.LIGHTWHITE_EX
-    }
+def random_color(
+    normal_color=True,
+    bright_color=True,
+    contrast_color=True,
+    use_styles=True,
+    special_combinations=True
+) -> str:
+    """
+    Retorna uma cor aleatória customizável com base nos tipos de cores disponíveis no colorama.
 
-    # Mapeamento de estilos disponíveis para customização
-    available_styles = {
-        'bright': Style.BRIGHT,
-        'dim': Style.DIM,
-        'normal': Style.NORMAL,
-        'reset': Style.RESET_ALL
-    }
+    Args
+        normal_color=(bool): Incluir cores normais (Fore.RED, Fore.GREEN, ...)
+        bright_color= (bool): Incluir cores brilhantes (Fore.LIGHTRED_EX, ...)
+        contrast_color=(bool): Incluir combinações de Fore + Back
+        usar_estilos (bool): Incluir estilos com Style.BRIGHT
+        usar_combinacoes_especiais (bool): Incluir misturas visuais únicas com Style + Back
 
-    # Todas as cores disponíveis para o modo random (incluindo versões light e combinações)
-    all_random_colors = [
-        Fore.BLACK, Fore.RED, Fore.GREEN, Fore.YELLOW,
-        Fore.BLUE, Fore.MAGENTA, Fore.CYAN, Fore.WHITE,
-        Fore.LIGHTBLACK_EX, Fore.LIGHTRED_EX, Fore.LIGHTGREEN_EX,
-        Fore.LIGHTYELLOW_EX, Fore.LIGHTBLUE_EX, Fore.LIGHTMAGENTA_EX,
-        Fore.LIGHTCYAN_EX, Fore.LIGHTWHITE_EX,
-        
-        # Combinações especiais para mais variedade
-        Fore.YELLOW + Back.BLUE,
-        Fore.CYAN + Back.MAGENTA,
-        Fore.WHITE + Back.RED,
-        Fore.LIGHTYELLOW_EX + Back.LIGHTBLUE_EX,
-        Style.BRIGHT + Fore.GREEN,
-        Style.BRIGHT + Fore.RED,
-        Style.BRIGHT + Fore.CYAN,
-        Style.DIM + Fore.YELLOW
-    ]
+    Returns:
+        str: Sequência de estilo/colorama pronta para uso
+    """
+    cores = []
 
-    # Se custom_color foi especificado, usa essa cor
-    if custom_color is not None:
-        color = available_colors.get(custom_color.lower(), Fore.WHITE)
-        style = available_styles.get(custom_style.lower(), Style.NORMAL) if custom_style else Style.NORMAL
-        print(f"{style}{color}{text}{Style.RESET_ALL}")
-    else:
-        if level.lower() == 'random':
-            # Seleciona uma cor aleatória diferente das cores padrão
-            default_colors = set(colors.values())
-            available_rand_colors = [c for c in all_random_colors if c not in default_colors]
-            
-            # Se não houver cores disponíveis, usa todas
-            color = random.choice(available_rand_colors) if available_rand_colors else random.choice(all_random_colors)
-        else:
-            color = colors.get(level.lower(), Fore.WHITE)
+    if normal_color:
+        cores.extend([
+            Fore.BLACK, Fore.RED, Fore.GREEN, Fore.YELLOW,
+            Fore.BLUE, Fore.MAGENTA, Fore.CYAN, Fore.WHITE
+        ])
 
-        print(f"{color}{text}{Style.RESET_ALL}")
+    if bright_color:
+        cores.extend([
+            Fore.LIGHTBLACK_EX, Fore.LIGHTRED_EX, Fore.LIGHTGREEN_EX,
+            Fore.LIGHTYELLOW_EX, Fore.LIGHTBLUE_EX, Fore.LIGHTMAGENTA_EX,
+            Fore.LIGHTCYAN_EX, Fore.LIGHTWHITE_EX
+        ])
 
-def banner(title: str) -> None:
-    """Display a perfectly symmetrical formatted header with borders.
-    
+    if contrast_color:
+        cores.extend([
+            Fore.RED + Back.CYAN,
+            Fore.GREEN + Back.MAGENTA,
+            Fore.YELLOW + Back.BLUE,
+            Fore.BLUE + Back.YELLOW,
+            Fore.MAGENTA + Back.GREEN,
+            Fore.CYAN + Back.RED,
+            Fore.WHITE + Back.BLACK
+        ])
+
+    if use_styles:
+        cores.extend([
+            Style.BRIGHT + Fore.RED,
+            Style.BRIGHT + Fore.GREEN,
+            Style.BRIGHT + Fore.YELLOW,
+            Style.BRIGHT + Fore.BLUE,
+            Style.BRIGHT + Fore.MAGENTA,
+            Style.BRIGHT + Fore.CYAN
+        ])
+
+    if special_combinations:
+        cores.extend([
+            Style.BRIGHT + Fore.WHITE + Back.RED,
+            Style.BRIGHT + Fore.YELLOW + Back.BLUE,
+            Style.BRIGHT + Fore.CYAN + Back.MAGENTA
+        ])
+
+    if not cores:
+        return Fore.WHITE  # fallback seguro
+
+    return random.choice(cores)
+
+
+# BANNER DE MILHOES
+def banner(title: str, verbose: bool = True) -> None:
+
+    """
+    Mostra o banner colorido com a largura do terminal
     Args:
-        title: The title to display (will be converted to uppercase)
+        title (str): Titulo do banner
+        verbose (bool): Flag para habilitar ou desabilitar a impressao das mensagens
+    Returns:
+        None
     """
-    # Constants for layout
-    MIN_WIDTH = 60  # Minimum banner width
-    BORDER_CHAR = '='
-    CORNER_CHAR = '*'
-    SIDE_PADDING = 1  # Minimum space between border and text
+    try:
+        term_width = os.get_terminal_size().columns
+    except:
+        term_width = 80  # Fallback width if terminal size can't be determined
     
-    # Format the title (uppercase)
-    formatted_title = title.upper()
-    title_length = len(formatted_title)
+    title = title.upper()
+    title_length = len(title)
     
-    # Calculate the total required width
-    required_width = max(
-        MIN_WIDTH,  # Use either the minimum width or...
-        2 + (2 * SIDE_PADDING) + title_length  # ...the space needed for the title
-    )
+    # Banner elements
+    CORNER_CHAR = '✻'
+    TOP_BORDER_CHAR = '═'
+    BOTTOM_BORDER_CHAR = '═'
+    SIDE_CHAR = '║'
+    PADDING_CHAR = ' '
     
-    # Calculate available padding space
-    total_padding_space = required_width - 2 - title_length  # 2 for the corner chars
-    left_padding = total_padding_space // 2
-    right_padding = total_padding_space - left_padding  # Handles odd numbers
+    # Calculate available space for title (subtracting corners and side chars)
+    available_width = term_width - 4  # 2 corners + 2 side chars
     
-    # Build the perfectly aligned middle line
-    middle_line = (
-        CORNER_CHAR + 
-        ' ' * left_padding + 
-        formatted_title + 
-        ' ' * right_padding + 
-        CORNER_CHAR
-    )
+    # Create the top and bottom borders
+    top_border = CORNER_CHAR + TOP_BORDER_CHAR * (term_width - 2) + CORNER_CHAR
+    bottom_border = CORNER_CHAR + BOTTOM_BORDER_CHAR * (term_width - 2) + CORNER_CHAR
     
-    # Border matches exactly with the corners
-    border = BORDER_CHAR * required_width
+    # Create title line with centered text
+    if title_length > available_width:
+        title = title[:available_width-3] + "..."
+        title_length = len(title)
     
-    # Output all parts with random colors
-    message(f"\n{border}", custom_color='lightgreen', custom_style='bright')
-    message(middle_line, level="random")
-    message(border, custom_color='lightgreen', custom_style='bright')
+    padding_total = available_width - title_length
+    left_padding = padding_total // 2
+    right_padding = padding_total - left_padding
+    # MODIFICADO: Formatação simétrica da linha do título
+    title_line = f"{SIDE_CHAR}{PADDING_CHAR}{' ' * left_padding}{title}{' ' * right_padding}{PADDING_CHAR}{SIDE_CHAR}"
+
+    
+    # Create decorative lines above and below title
+    decorative_line = SIDE_CHAR + '─' * (term_width - 2) + SIDE_CHAR
+    
+    # Print the banner with random colors
+    color1 = random_color(
+    bright_color=True,
+    normal_color=True,
+    contrast_color=False,
+    use_styles=False,
+    special_combinations=False
+)
+    color2 = random_color(
+    bright_color=True,
+    normal_color=True,
+    contrast_color=False,
+    use_styles=False,
+    special_combinations=False
+)
+    color3 = random_color(
+    bright_color=True,
+    normal_color=True,
+    contrast_color=False,
+    use_styles=False,
+    special_combinations=False
+)
+    
+    message('\n' + top_border, color=color1, verbose=verbose)
+    message(decorative_line, color=color2, verbose=verbose)
+    message(title_line, color=color3, verbose=verbose)
+    message(decorative_line, color=color2, verbose=verbose)
+    message(bottom_border, color=color1, verbose=verbose)
 
 # === Core shell utilities ===
+
+def wget(url, output_file=None, verbose=False):
+    """
+    Função equivalente ao comando wget para download de arquivos usando requests.
+    
+    Parâmetros:
+    - url: URL do arquivo a ser baixado
+    - output_file: Nome do arquivo de saída (opcional)
+    - verbose: Se True, exibe informações durante o download
+    
+    Retorno:
+    - Nome do arquivo baixado ou None em caso de erro
+    """
+    try:
+        if output_file is None:
+            # Extrai o nome do arquivo da URL se não for fornecido
+            output_file = url.split('/')[-1].split('?')[0]  # Remove query parameters
+            if not output_file:
+                output_file = "downloaded_file"
+        
+        if verbose:
+            print(f"Baixando {url} para {output_file}...")
+        
+        # Faz a requisição com stream=True para baixar arquivos grandes
+        with requests.get(url, stream=True) as response:
+            response.raise_for_status()  # Verifica se houve erro HTTP
+            
+            # Obtém o tamanho do arquivo se disponível
+            file_size = int(response.headers.get('content-length', 0))
+            
+            if verbose and file_size:
+                print(f"Tamanho do arquivo: {file_size} bytes")
+            
+            # Escreve o conteúdo no arquivo
+            with open(output_file, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:  # Filtra keep-alive chunks
+                        f.write(chunk)
+            
+        # Verifica se o arquivo foi baixado
+        if os.path.exists(output_file):
+            if verbose:
+                actual_size = os.path.getsize(output_file)
+                print(f"Download concluído! Tamanho: {actual_size} bytes")
+            return output_file
+        else:
+            raise Exception("Falha no download - arquivo não foi criado")
+            
+    except Exception as e:
+        print(f"Erro durante o download: {str(e)}")
+        return None
+
+# Exemplo de uso:
+# wget("https://example.com/file.zip", "meu_arquivo.zip", verbose=True)
+
+
+def soup(url, save=False, show=False):
+    response = requests.get(url)
+    soup = bs(response.content, 'html.parser')
+    if show:
+        print(soup.prettify())
+    if save:
+        with open("index.html", "w") as f:
+            f.write(soup.prettify())
+    return soup
+
 
 def pwd():
     """Return current working directory (like 'pwd')"""
@@ -451,25 +526,6 @@ def ln(src, dst, symbolic=True):
     """Create hard or symbolic link (like 'ln')"""
     os.symlink(src, dst) if symbolic else os.link(src, dst)
 
-def wget(url, output=None, verbose=True):
-    """
-    Download file using Python's wget module.
-
-    Args:
-        url (str): File URL.
-        output (str): Output file path (optional).
-        verbose (bool): Show output messages.
-
-    Returns:
-        str: Path to downloaded file.
-    """
-    try:
-        filepath = wget_module.download(url, out=output) if output else wget_module.download(url)
-        message(f"Download complete: {filepath}", level="success", verbose=verbose)
-        return filepath
-    except Exception as e:
-        message(f"Download failed: {e}", level="error", verbose=verbose)
-        return None
 
 def tar_create(archive_name, source_path):
     """Create tar archive (like 'tar -czf')"""
@@ -564,145 +620,15 @@ def ping(host, count=4, timeout=2, verbose=False):
     except Exception as e:
         message(f"Ping failed: {e}", "error")
         return None
-# === MEGA.nz integration ===
-'''
-MEGA PROJECT ACCOUNT
-  email(tempmail): vedomi8632@nab4.com
-  username:        shell_utilities
-  password:        shell_utilities
-  recovery key:    GXQE7NVwRJpuB52KwkhzzQ
-'''
 
-_mega_session = None
-
-def mega_login(email=None, password=None, verbose=True):
-    """
-    Realiza login na conta MEGA. Se não for fornecido email e senha, faz login anônimo.
-    """
-    global _mega_session
-    try:
-        message("Efetuando login no MEGA...", level="info")
-        mega = Mega()
-        _mega_session = mega.login(email, password) if email and password else mega.login()
-        message("Login realizado com sucesso.", level='success', verbose=verbose)
-        return True
-    except Exception as e:
-        message(f"Erro ao fazer login: {e}", level='error', verbose=verbose)
-        return False
-
-def mega_logout(verbose=True):
-    """
-    Faz logout limpando a sessão ativa.
-    """
-    global _mega_session
-    _mega_session = None
-    message("Logout efetuado.", level="info", verbose=verbose)
-
-def mega_upload(filepath, verbose=True):
-    """
-    Envia um arquivo para o MEGA. Retorna o link público.
-    """
-    if not _mega_session:
-        raise Exception("Você precisa fazer login primeiro.")
-    if not os.path.isfile(filepath):
-        raise FileNotFoundError(f"Arquivo não encontrado: {filepath}")
-    try:
-        file = _mega_session.upload(filepath)
-        link = _mega_session.get_upload_link(file)
-        message(f"Upload concluído: {filepath}", level="success", verbose=verbose)
-        message(f"Link público: {link}", level="info", verbose=verbose)
-        return link
-    except Exception as e:
-        message(f"Falha no upload: {e}", level="error", verbose=verbose)
-        return None
-
-def mega_list_files(verbose=True):
-    """
-    Lista todos os arquivos disponíveis na conta MEGA.
-    Retorna uma lista de dicionários com informações.
-    """
-    if not _mega_session:
-        raise Exception("Você precisa estar autenticado.")
-    try:
-        files = _mega_session.get_files()
-        lista = []
-        for fid, f in files.items():
-            entry = {
-                'id': fid,
-                'name': f['name'],
-                'size_kb': f['s'] // 1024
-            }
-            lista.append(entry)
-            message(f"{fid} - {f['name']} ({entry['size_kb']} KB)", level="debug", verbose=verbose)
-        return lista
-    except Exception as e:
-        message(f"Erro ao listar arquivos: {e}", level="error", verbose=verbose)
-        return []
-
-def mega_get_link(file_id, verbose=True):
-    """
-    Retorna o link público de um arquivo a partir do ID.
-    """
-    if not _mega_session:
-        raise Exception("Você precisa estar autenticado.")
-    try:
-        files = _mega_session.get_files()
-        if file_id not in files:
-            raise ValueError(f"ID inválido: {file_id}")
-        link = _mega_session.get_upload_link(files[file_id])
-        message(f"Link de compartilhamento: {link}", level="info", verbose=verbose)
-        return link
-    except Exception as e:
-        message(f"Erro ao obter link: {e}", level="error", verbose=verbose)
-        return None
-
-def mega_download_file(file_id, dest_path='.', verbose=True):
-    """
-    Baixa um arquivo do MEGA usando seu ID.
-    """
-    if not _mega_session:
-        raise Exception("Você precisa estar autenticado.")
-    try:
-        files = _mega_session.get_files()
-        if file_id not in files:
-            raise ValueError(f"ID inválido: {file_id}")
-        _mega_session.download(files[file_id], dest_path)
-        message(f"Download concluído para: {dest_path}", level="success", verbose=verbose)
-    except Exception as e:
-        message(f"Falha no download: {e}", level="error", verbose=verbose)
-
-def mega_download_url(url, dest_filename=None, verbose=True):
-    """
-    Baixa um arquivo de uma URL pública do MEGA.
-    """
-    global _mega_session
-    if not _mega_session:
-        _mega_session = Mega().login()
-    try:
-        _mega_session.download_url(url, dest_filename)
-        message(f"Download via URL concluído: {url}", level="success", verbose=verbose)
-    except Exception as e:
-        message(f"Falha no download da URL: {e}", level="error", verbose=verbose)
-
-def mega_delete(file_id, verbose=True):
-    """
-    Remove um arquivo da conta MEGA usando o ID.
-    """
-    if not _mega_session:
-        raise Exception("Você precisa estar autenticado.")
-    try:
-        _mega_session.destroy(file_id)
-        message(f"Arquivo {file_id} removido com sucesso.", level="success", verbose=verbose)
-    except Exception as e:
-        message(f"Erro ao deletar arquivo: {e}", level="error", verbose=verbose)
-
-# while True:
-#     try:
-#         clear()
-#         banner("HELLO WORLD")
-#         # Add a small delay to prevent flickering and reduce CPU usage
-#         time.sleep(0.1)
-#     except KeyboardInterrupt:
-#         clear()
-#         banner("GOODBYE WORLD")
-#         break  # Exit the loop after handling the interrupt
+if __name__ == "__main__":
+    while True:
+        try:
+            clear()
+            banner("HELLO WORLD")
+            # Add a small delay to prevent flickering and reduce CPU usage
+            time.sleep(0.1)
+        except KeyboardInterrupt:
+            clear()
+            banner("GOODBYE WORLD")
+            break  # Exit the loop after handling the interrupt

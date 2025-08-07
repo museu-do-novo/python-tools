@@ -1,0 +1,9 @@
+requests
+wget
+cryptography
+colorama
+psutil
+beautifulsoup4
+lxml
+selenium
+yt-dlp

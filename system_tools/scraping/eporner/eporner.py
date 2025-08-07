@@ -11,7 +11,8 @@ baseurl = "https://www.eporner.com"
 search_path = "/search/curvy-latina-natalia/"
 linksfile = "links.txt"
 # mexer enssa parte para funcionar em outras maquinas adicionar os.mkdirs para verificar e mudar o caminho
-downloadpath = os.path.expanduser('~/Videos/nat/')
+downloadpath = os.path.expanduser('~/Videos/eporner/')
+os.makedirs(downloadpath, exist_ok=True)
 
 def downloadvideos(linksfile, path):
     # Verifica se o arquivo de links existe
