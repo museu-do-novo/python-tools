@@ -43,11 +43,11 @@ def pesquisa_artista(artista):
 def manipule_printer(artista_musica, openfile=False, show=False):
     artista_musica = artista_musica.strip("/")
     filename = artista_musica.replace("/", "-").replace("-", "_")
-    # cifrafile = os.path.expanduser(f"~/Documents/cifras/{filename}.txt")
-    
-    if not os.path.exists("./cifras"):
-        os.mkdir("./cifras")
-    cifrafile = f"./cifras/{filename}.txt"
+
+    savedir = f'{os.path.dirname(os.path.abspath(__file__))}/cifras'
+    if not os.path.exists(savedir):
+        os.mkdir(savedir)
+    cifrafile = f"{savedir}/{filename}.txt"
 
     printer_url = f"https://www.cifraclub.com.br/{artista_musica}/imprimir.html"
 
@@ -67,7 +67,7 @@ def manipule_printer(artista_musica, openfile=False, show=False):
         print('')
         shell_utilities.message(cifra, color=shell_utilities.Fore.GREEN)
 
-    # print(f"\n✅ Cifra salva em: {cifrafile}")
+    shell_utilities.message(f"\n✅ Cifra salva em: {cifrafile}", color=shell_utilities.Fore.CYAN)
     if openfile:
         os.system(f'nano "{cifrafile}"')
 
