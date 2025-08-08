@@ -621,6 +621,26 @@ def ping(host, count=4, timeout=2, verbose=False):
         message(f"Ping failed: {e}", "error")
         return None
 
+def openinbrowser(url):
+    """Open URL in default browser (like 'xdg-open')"""
+    os.system(f'firefox --private-window {url}')
+
+def aria2(url, savepath):
+    """Download file using aria2c"""
+    os.makedirs(savepath, exist_ok=True)
+    os.system(f'aria2c {url} -d {savepath}')
+
+
+def save_json(content, filepath, verbose=False):
+    try:
+        with open(filepath, 'w', encoding='utf-8') as arquivo:
+            json.dump(content, arquivo, ensure_ascii=False, indent=4)
+        message(f"JSON saved to: {os.path.abspath(filepath)}", color=Fore.GREEN, verbose=verbose)
+    except Exception as e:
+        message(f"Failed to save JSON: {e}", color=Fore.RED, verbose=verbose)
+
+
+
 if __name__ == "__main__":
     while True:
         try:

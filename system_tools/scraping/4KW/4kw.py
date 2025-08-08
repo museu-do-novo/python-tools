@@ -4,16 +4,12 @@ import re
 import argparse
 import time
 import sys
-if './utils.py' not in sys.path:
-    sys.path.append('./utils.py')
+
+shmodule = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../shell_utilities'))
+if shmodule not in sys.path:
+    sys.path.append(shmodule)
+import shell_utilities
 import utils
-
-
-def paginacao(search: str, totalpags: int) -> list:
-    # provavelmente essa funcao esta dando problema na iteracao dessa lista
-    # esse loop for esta susito de debugar
-    return [f"https://4kw.in/page/{i}/?s={search}" for i in range(1, totalpags + 1)]
-
 
 def totalpaginas(soup: str) -> int:
     # 🧪 Caso 1 — Formato clássico: <span class="pages">Page X of Y</span>
@@ -22,7 +18,7 @@ def totalpaginas(soup: str) -> int:
         match = re.search(r'Page\s+\d+\s+of\s+(\d+)', page_info.get_text(strip=True))
         if match:
             total = int(match.group(1))
-            utils.message(f'[Clássico] Total de páginas: {total}', verbose=True, color=utils.Fore.GREEN)
+            shell_utilities.message(f'[Clássico] Total de páginas: {total}', verbose=True, color=shell_utilities.Fore.GREEN)
             return total
 
     # 🧪 Caso 2 — Formato moderno: <ul class="page-numbers">…</ul>
@@ -36,12 +32,17 @@ def totalpaginas(soup: str) -> int:
 
     if numeros:
         total = max(numeros)
-        utils.message(f'[Moderno] Total de páginas: {total}', verbose=True, color=utils.Fore.GREEN)
+        shell_utilities.message(f'[Moderno] Total de páginas: {total}', verbose=True, color=shell_utilities.Fore.GREEN)
         return total
 
     # Fallback padrão
-    utils.message('[Fallback] Nenhuma paginação encontrada. Retornando 1.', verbose=True, color=utils.Fore.YELLOW)
+    shell_utilities.message('[Fallback] Nenhuma paginação encontrada. Retornando 1.', verbose=True, color=shell_utilities.Fore.YELLOW)
     return 1
+
+
+def paginacao(search: str, totalpags: int) -> list:
+    return [f"https://4kw.in/page/{i}/?s={search}" for i in range(1, totalpags + 1)]
+
 
 def resultadosbusca(soup: str) -> list:
     resultados = []
@@ -57,7 +58,7 @@ def resultadosbusca(soup: str) -> list:
 
 
 def downloadpage(post_url: str) -> dict:
-    soup = utils.sopinha(post_url)
+    soup = shell_utilities.soup(post_url)
 
     # Verifica se a página é realmente baixável
     if not utils.is_downloadable(soup):
@@ -67,7 +68,6 @@ def downloadpage(post_url: str) -> dict:
             "baixavel": False
         }
 
-    # Extrai texto de informação (ex: Size : ...)
     info_text = None
     info_tag = soup.find("p", class_="has-text-align-center has-medium-font-size")
     if info_tag:
@@ -110,7 +110,7 @@ def main():
     search = args.search
     page = 1
     first_url = f"https://4kw.in/page/{page}/?s={search}"
-    soup = utils.sopinha(first_url)
+    soup = shell_utilities.soup(first_url)
     total_pags = totalpaginas(soup)
     all_pages = paginacao(search=search, totalpags=total_pags)
 
@@ -120,7 +120,7 @@ def main():
         print(f"🔍 {pagina}".center(os.get_terminal_size().columns))
         print(f"{all_pages.index(pagina) + 1}/ {total_pags}".center(os.get_terminal_size().columns))
         
-        conteudo = utils.sopinha(pagina)
+        conteudo = shell_utilities.soup(pagina)
         resultados = resultadosbusca(conteudo)
         
         if not resultados:
@@ -150,8 +150,7 @@ def main():
 
     # === AGORA SIM: salvar fora do loop ===
     if todos_os_resultados:
-        utils.salvar_em_json(todos_os_resultados, jsonfile)
-        print(f"\n✅ JSON salvo em {jsonfile}")
+        shell_utilities.save_json(content=todos_os_resultados, filepath=jsonfile, verbose=True)
     else:
         print("\n⚠️ Nenhum resultado encontrado em nenhuma página. Nada foi salvo.")
 
@@ -167,13 +166,13 @@ def main():
             if item.get("baixavel"):
                 link = item.get("download")
                 if link and link.startswith("http"):
-                    utils.openinbrowser(link)
+                    shell_utilities.openinbrowser(link)
                     time.sleep(0.1)
 
 
 if __name__ == '__main__':
     try:
-        utils.clear()
+        shell_utilities.clear()
         main()
     except KeyboardInterrupt:
         exit()
