@@ -8,32 +8,6 @@ import time
 from colorama import Fore, Style
 
 
-def clear():
-    os.system('clear' if os.name == 'posix' else 'cls')
-
-def message(msg: str, verbose: bool = False, color: str = Fore.YELLOW):
-    if verbose:
-        print(f"{color}{msg}{Style.RESET_ALL}")
-    else:
-        print(f"{color}{msg}{Style.RESET_ALL}")
-
-def openinbrowser(url):
-    os.system(f"firefox --private-window {url}")
-
-def sopinha(url: str) -> str:
-    """
-    Fetches the HTML content of the given URL and parses it into a BeautifulSoup object.
-
-    Args:
-        url (str): The URL of the webpage to fetch.
-
-    Returns:
-        BeautifulSoup: A BeautifulSoup object containing the parsed HTML of the webpage.
-    """
-    response = requests.get(url).text
-    soup = bs(response, 'html.parser')
-    return soup
-
 def abrir_pdfs(json_path: str) -> bool:
     """
     Opens all PDF links found in the JSON file in a private Firefox window.
@@ -130,17 +104,6 @@ def salvar_em_json(dados, nome_arquivo):
     with open(nome_arquivo, 'w', encoding='utf-8') as arquivo:
         json.dump(dados, arquivo, ensure_ascii=False, indent=4)
 
-
-"""
-
-baixar todos os epubs:
-    clear; for epub in $(jq '.[] | select(.info | test("\\bepub\\b"; "i"))'  /home/nad/Documents/4kw_jsons/4kw_homemade.json | jq '.download'); do echo $epub | awk -F\" '{print $2}' >> links.txt; done; cat links.txt; aria2c -i links.txt
-    os.system('clear; '
-          'jq -r \'.[] | select(.info | test("\\\\bepub\\\\b"; "i")) | .download\' '
-          '/home/nad/Documents/4kw_jsons/4kw_homemade.json > links.txt; '
-          'cat links.txt; '
-          'aria2c -i links.txt')
-"""
 
 def is_downloadable(soup):
     # recebe soup de downloadpage

@@ -8,3 +8,4 @@ lxml
 selenium
 yt-dlp
 pythonping
+fnmatch

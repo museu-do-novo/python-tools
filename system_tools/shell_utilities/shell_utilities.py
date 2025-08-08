@@ -302,10 +302,11 @@ def rm(path, recursive=False, force=False):
         force: Ignore errors if file doesn't exist (like -f)
     """
     try:
-        if os.path.isdir(path):
-            shutil.rmtree(path) if recursive else os.rmdir(path)
-        else:
-            os.remove(path)
+        if os.path.exists(path):
+            if os.path.isdir(path):
+                shutil.rmtree(path) if recursive else os.rmdir(path)
+            else:
+                os.remove(path)
     except Exception as e:
         if not force:
             raise
@@ -639,6 +640,22 @@ def save_json(content, filepath, verbose=False):
     except Exception as e:
         message(f"Failed to save JSON: {e}", color=Fore.RED, verbose=verbose)
 
+def savetofile(filename, content,  clean=False, verbose=True):
+
+    if clean and os.path.exists(filename):
+        message(f"🗑️ Limpando arquivo: {filename}", color=Fore.YELLOW, verbose=verbose)
+        rm(filename)
+
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(filename, 'a') as file:
+        if type(content) == list:
+            message(f"📄 Salvando {len(content)} itens da lista em {filename}", verbose=verbose)
+            for item in content:
+                file.write(f"{item}\n")
+        else:
+            message(f"📄 Salvando conteúdo do texto em {filename}", verbose=verbose)
+            file.write(content)
 
 
 if __name__ == "__main__":
