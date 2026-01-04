@@ -1,106 +1,79 @@
-#!env_eporner/bin/python3
-
+import re
+import sys
+from pathlib import Path
+from InquirerPy import inquirer
+from rich.console import Console
 import requests
 from bs4 import BeautifulSoup as bs
-import re
-import os
 from yt_dlp import YoutubeDL
-
-# variables
+console = Console()
+console.clear()
+console.rule(title="BAIXAR VIDEOS")
 baseurl = "https://www.eporner.com"
-search_path = "/search/curvy-latina-natalia/"
+search_path = inquirer.text(message="pesquise ai: ", default="/search/curvy-latina-natalia/", raise_keyboard_interrupt=False).execute()
 linksfile = "links.txt"
-# mexer enssa parte para funcionar em outras maquinas adicionar os.mkdirs para verificar e mudar o caminho
-downloadpath = os.path.expanduser('~/Videos/eporner/')
-os.makedirs(downloadpath, exist_ok=True)
-
+downloadpath = Path('~/Videos/eporner/').expanduser()
+Path.mkdir(downloadpath, exist_ok=True)
 def downloadvideos(linksfile, path):
-    # Verifica se o arquivo de links existe
-    if not os.path.exists(linksfile):
-        print(f"❌ Arquivo '{linksfile}' não encontrado.")
+    if not Path(linksfile).exists():
+        console.print(f"[red]Arquivo '{linksfile}' não encontrado.")
         return
-
-    # Cria a pasta de destino, se não existir
-    os.makedirs(path, exist_ok=True)
-
-    # Lê os links do arquivo
+    Path.mkdir(path, exist_ok=True)
     with open(linksfile, 'r') as f:
         links = [linha.strip() for linha in f if linha.strip()]
-
     if not links:
-        print("⚠️ Nenhum link válido encontrado no arquivo.")
+        console.print(f"[red]Nenhum link válido encontrado no arquivo.")
         return
-
-    # Opções do yt-dlp
     ytdlp_opts = {
-        'format': 'bestvideo+bestaudio/best',
-        'merge_output_format': 'mp4',
-        'outtmpl': os.path.join(path, '%(title).80s.%(ext)s'),
-        'noplaylist': True,
-        'nooverwrites': True,
-        'quiet': False,
-        'ignoreerrors': True,
-        'continue': True
+        'format': 'bestvideo+bestaudio/best', 'merge_output_format': 'mp4',
+        'outtmpl': str(Path(path).joinpath('%(title).80s.%(ext)s')),
+        'noplaylist': True, 'nooverwrites': True,
+        'quiet': False, 'ignoreerrors': True, 'continue': True
     }
-
-    print(f"🚀 Baixando vídeos de '{linksfile}' para '{path}'...\n")
-
+    console.print(f"[green]Baixando vídeos de [yellow]'{linksfile}' [green]para [blue]'{path}'[green]...\n")
     with YoutubeDL(ytdlp_opts) as ydl:
         ydl.download(links)
-
-    print(f"\n✅ Download concluído com sucesso para {len(links)} links.")
-
-
-
-
-def clear():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
+    console.print(f"\n[blink green]Download concluído com sucesso para [/][magenta]{len(links)}[blink green] links.")
 def savefile(filename, inputinfo, clean=False):
-    if clean and os.path.exists(filename):
-        os.remove(filename)
+    if clean and Path(filename).exists():
+        Path(filename).unlink(missing_ok=True)
     with open(filename, 'a') as file:
         if isinstance(inputinfo, list):
             for info in inputinfo:
                 file.write(f"{info}\n")
         else:
             file.write(inputinfo)
-
-def openinbrowser(url):
-    os.system(f"firefox --private-window {url} &")
-
-
-
 def main():
-    clear()
+    console.clear()
     clean_link = []
     page = 1
-
     while True:
-        print(f"📄 Página: {page}")
+        console.rule(title=f":page_facing_up: [magenta]Página: [blue]{page}", style="yellow")
         url = f"{baseurl}{search_path}{page}/"
-        response = requests.get(url)
+        response = requests.get(url, timeout=15)
         soup = bs(response.text, 'html.parser')
-        # openinbrowser(url)
-        # Extrair os links de vídeo
-        for a in soup.find_all('a', href=True):
-            if re.search(r'^/video-\w+', a['href']):
-                video_url = baseurl + a['href']
+        # CSS Selector: div.mbcontent a[href]
+        for a in soup.select('div.mbcontent a[href]'):
+            href = a.get('href', '').strip()
+            # Regex para capturar apenas URLs do tipo /video-xxxx
+            if re.match(r'^/video-\w+', href):
+                video_url = baseurl + href
+                # Evita links duplicados
                 if video_url not in clean_link:
                     clean_link.append(video_url)
-                    print(f"🎥 {video_url}")
-
-        # Verifica se existe botão "NEXT"
+                    console.print(f":film_projector: [green] {video_url}")
+        # Verifica existência do botão NEXT (paginação)
         next_button = soup.find('a', class_='nmnext')
         if not next_button:
-            print("🚫 Última página alcançada.")
+            console.print("[red]Última página alcançada.")
             break
-
         page += 1
-
     savefile(linksfile, clean_link, clean=True)
-    print(f"\n✅ {len(clean_link)} links salvos em {linksfile}")
+    console.rule(title=f"[blue]{len(clean_link)}[green blink] links salvos em [/][blue]{linksfile}")
     downloadvideos(linksfile=linksfile, path=downloadpath)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.rule(title="adios")
